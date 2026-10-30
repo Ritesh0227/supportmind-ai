@@ -1,0 +1,27 @@
+{
+  "name": "supportmind-ai",
+  "version": "1.0.0",
+  "description": "SupportMind AI - Enterprise AI Customer Support Knowledge System (HACK-P380)",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "node scripts/dev.js",
+    "install:all": "node scripts/install-all.js",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "build": "npm run build:server && npm run build:client",
+    "test:api": "cd server && npm run test:api"
+  },
+  "keywords": [
+    "ai",
+    "customer-support",
+    "knowledge-base",
+    "rag",
+    "react",
+    "typescript",
+    "supabase"
+  ],
+  "author": "SupportMind AI Team",
+  "license": "MIT"
+}

@@ -1,0 +1,63 @@
+// server/src/index.ts
+import dotenv from 'dotenv';
+dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
+import { categoriesRouter } from './routes/categories.js';
+import { articlesRouter } from './routes/articles.js';
+import { chatRouter } from './routes/chat.js';
+import { feedbackRouter } from './routes/feedback.js';
+import { analyticsRouter } from './routes/analytics.js';
+import { testSuiteRouter } from './routes/testSuite.js';
+import { configRouter } from './routes/config.js';
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json());
+
+// API Routes
+app.use('/api/categories', categoriesRouter);
+app.use('/api/articles', articlesRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/feedback', feedbackRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/test-suite', testSuiteRouter);
+app.use('/api/config', configRouter);
+
+// Health check
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'healthy',
+    name: 'SupportMind AI Knowledge System',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+// Global Error Handler
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[Server Error]', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: err.message || 'An unexpected error occurred',
+  });
+});
+
+// Start Server
+app.listen(PORT, () => {
+  console.log('====================================================');
+  console.log(`🚀 SupportMind AI Backend Server active on port ${PORT}`);
+  console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER || 'builtin'}`);
+  console.log(`🗄️ Database Mode: ${process.env.DATABASE_MODE || 'local'}`);
+  console.log('====================================================');
+});
