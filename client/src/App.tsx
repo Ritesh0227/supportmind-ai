@@ -40,27 +40,11 @@ export const App: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
 
-  // Validate admin token on mount
-  useEffect(() => {
-    const token = localStorage.getItem('supportmind_admin_token');
-    if (token) {
-      api.getAdminProfile()
-        .then((res) => {
-          setAdminUser(res.user);
-          localStorage.setItem('supportmind_admin_user', JSON.stringify(res.user));
-        })
-        .catch(() => {
-          // Stale or invalid token - clear session
-          localStorage.removeItem('supportmind_admin_token');
-          localStorage.removeItem('supportmind_admin_user');
-          setAdminUser(null);
-        });
-    }
-  }, []);
-
-  // Load knowledge base data
-  const loadData = async () => {
+  // Load knowledge base data with auto-retry for cloud cold starts
+  const loadData = async (isRetry = false) => {
+    if (!isRetry) setLoading(true);
     try {
       const [cats, prods, arts] = await Promise.all([
         api.getCategories(),
@@ -70,8 +54,16 @@ export const App: React.FC = () => {
       setCategories(cats);
       setProducts(prods);
       setArticles(arts);
-    } catch (err) {
-      console.error('Failed to load knowledge base data:', err);
+      setConnectionNotice(null);
+    } catch (err: any) {
+      console.warn('Backend connection notice (server may be waking up):', err);
+      setConnectionNotice('Cloud backend is connecting (free-tier servers may take a few moments to spin up)...');
+      // Auto retry after 5s if still empty
+      if (!isRetry) {
+        setTimeout(() => {
+          loadData(true);
+        }, 5000);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,6 +71,20 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    // Validate admin token on mount
+    const token = localStorage.getItem('supportmind_admin_token');
+    if (token) {
+      api.getAdminProfile()
+        .then((res) => {
+          setAdminUser(res.user);
+          localStorage.setItem('supportmind_admin_user', JSON.stringify(res.user));
+        })
+        .catch(() => {
+          localStorage.removeItem('supportmind_admin_token');
+          localStorage.removeItem('supportmind_admin_user');
+          setAdminUser(null);
+        });
+    }
   }, []);
 
   // Navigation handlers
@@ -153,6 +159,22 @@ export const App: React.FC = () => {
         onOpenTestSuite={() => setIsTestSuiteOpen(true)}
         onLogout={handleAdminLogout}
       />
+
+      {/* Cloud Backend Reconnecting / Cold-Start Banner */}
+      {connectionNotice && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+            <span>{connectionNotice}</span>
+          </div>
+          <button
+            onClick={() => loadData(true)}
+            className="px-2.5 py-0.5 rounded bg-amber-200 hover:bg-amber-300 font-semibold text-amber-900 transition-colors"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
 
       {/* Main View Switcher */}
       <main className="flex-1">

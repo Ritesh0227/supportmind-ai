@@ -3,15 +3,21 @@
   "version": "1.0.0",
   "description": "SupportMind AI - Enterprise AI Customer Support Knowledge System (HACK-P380)",
   "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm run dev",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
     "dev": "node scripts/dev.js",
-    "install:all": "node scripts/install-all.js",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build",
-    "build": "npm run build:server && npm run build:client",
-    "test:api": "cd server && npm run test:api"
+    "install:all": "npm install",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "build": "npm run build --workspace=client",
+    "build:all": "npm run build:server && npm run build:client",
+    "start": "npm run start --workspace=server",
+    "test:api": "npm run test:api --workspace=server"
   },
   "keywords": [
     "ai",

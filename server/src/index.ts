@@ -15,7 +15,8 @@ import { configRouter } from './routes/config.js';
 import { authRouter } from './routes/auth.js';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+const HOST = '0.0.0.0';
 
 // Middleware
 app.use(cors({
@@ -24,6 +25,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+
+// Root endpoint for deployment verification
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'online',
+    name: 'SupportMind AI API (HACK-P380)',
+    version: '1.0.0',
+    health: '/api/health',
+    endpoints: {
+      categories: '/api/categories',
+      products: '/api/products',
+      articles: '/api/articles',
+      chat: '/api/chat',
+      auth: '/api/auth/login',
+      analytics: '/api/analytics/dashboard',
+    },
+  });
+});
 
 // API Routes
 app.use('/api/auth', authRouter);
@@ -58,11 +77,13 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 });
 
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log('====================================================');
-  console.log(`🚀 SupportMind AI Backend Server active on port ${PORT}`);
+  console.log(`🚀 SupportMind AI Backend Server active on ${HOST}:${PORT}`);
   console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER || 'builtin'}`);
   console.log(`🗄️ Database: ${process.env.MONGODB_URI ? 'MongoDB' : 'Persistent Storage (server/data/db.json)'}`);
   console.log('====================================================');
 });
+
+export { app };

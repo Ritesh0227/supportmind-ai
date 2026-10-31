@@ -10,8 +10,8 @@ import { hashPassword, comparePassword } from '../utils/security.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.resolve(__dirname, '../../data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+const DATA_DIR = process.env.DATA_DIR || path.resolve(__dirname, '../../data');
+const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, 'db.json');
 
 const ADMIN_DEFAULT_CRED = hashPassword('admin123', 'supportmind_admin_salt_2026');
 

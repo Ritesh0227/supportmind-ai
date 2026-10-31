@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: supportmind-ai-backend
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: builtin
+      - key: DATABASE_MODE
+        value: local
+      - key: PORT
+        value: 10000

@@ -11,7 +11,37 @@ import {
   AdminUser,
 } from '../types.js';
 
-const API_BASE = '/api';
+// Resolve API base URL:
+// 1. Explicit environment variable (VITE_API_URL) for cloud deployment (e.g. Render backend)
+// 2. Fallback to '/api' (proxied via Vite dev server or Netlify redirects)
+const resolveApiBase = (): string => {
+  const envUrl = ((import.meta as any).env?.VITE_API_URL as string)?.trim();
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  return '/api';
+};
+
+export const API_BASE = resolveApiBase();
+
+/**
+ * Safe fetch helper that handles HTML 404/redirect responses gracefully
+ */
+async function safeJsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  let data: any;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`API returned invalid response (status ${res.status}). Server may be waking up.`);
+  }
+
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `HTTP error ${res.status}`);
+  }
+  return data as T;
+}
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('supportmind_admin_token') || '';
@@ -24,16 +54,11 @@ const getAuthHeaders = () => {
 export const api = {
   // Auth
   async adminLogin(email: string, password: string): Promise<{ token: string; user: AdminUser }> {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    return safeJsonFetch<{ token: string; user: AdminUser }>(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Authentication failed');
-    }
-    return data;
   },
 
   async adminLogout(): Promise<void> {
@@ -45,35 +70,27 @@ export const api = {
   },
 
   async getAdminProfile(): Promise<{ user: AdminUser }> {
-    const res = await fetch(`${API_BASE}/auth/me`, {
+    return safeJsonFetch<{ user: AdminUser }>(`${API_BASE}/auth/me`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('supportmind_admin_token') || ''}`,
       },
     });
-    if (!res.ok) throw new Error('Unauthorized');
-    return res.json();
   },
 
   // Categories
   async getCategories(): Promise<ArticleCategory[]> {
-    const res = await fetch(`${API_BASE}/categories`);
-    if (!res.ok) throw new Error('Failed to fetch categories');
-    const data = await res.json();
-    return data.categories;
+    const data = await safeJsonFetch<{ categories: ArticleCategory[] }>(`${API_BASE}/categories`);
+    return data.categories || [];
   },
 
   async getCategory(slug: string): Promise<{ category: ArticleCategory; articles: Article[] }> {
-    const res = await fetch(`${API_BASE}/categories/${slug}`);
-    if (!res.ok) throw new Error('Failed to fetch category');
-    return res.json();
+    return safeJsonFetch<{ category: ArticleCategory; articles: Article[] }>(`${API_BASE}/categories/${slug}`);
   },
 
   // Products
   async getProducts(): Promise<Product[]> {
-    const res = await fetch(`${API_BASE}/products`);
-    if (!res.ok) throw new Error('Failed to fetch products');
-    const data = await res.json();
-    return data.products;
+    const data = await safeJsonFetch<{ products: Product[] }>(`${API_BASE}/products`);
+    return data.products || [];
   },
 
   // Articles
@@ -89,10 +106,8 @@ export const api = {
     if (params?.status) query.set('status', params.status);
     if (params?.search) query.set('search', params.search);
 
-    const res = await fetch(`${API_BASE}/articles?${query.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch articles');
-    const data = await res.json();
-    return data.articles;
+    const data = await safeJsonFetch<{ articles: Article[] }>(`${API_BASE}/articles?${query.toString()}`);
+    return data.articles || [];
   },
 
   async getArticle(slugOrId: string): Promise<{
@@ -100,9 +115,11 @@ export const api = {
     category: ArticleCategory | null;
     relatedArticles: Article[];
   }> {
-    const res = await fetch(`${API_BASE}/articles/${slugOrId}`);
-    if (!res.ok) throw new Error('Failed to fetch article details');
-    return res.json();
+    return safeJsonFetch<{
+      article: Article;
+      category: ArticleCategory | null;
+      relatedArticles: Article[];
+    }>(`${API_BASE}/articles/${slugOrId}`);
   },
 
   async createArticle(payload: {
@@ -182,13 +199,11 @@ export const api = {
     conversationId?: string;
     provider?: string;
   }) {
-    const res = await fetch(`${API_BASE}/chat`, {
+    return safeJsonFetch<any>(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error('Failed to process question');
-    return res.json();
   },
 
   // Feedback
@@ -199,53 +214,41 @@ export const api = {
     comment?: string;
     userEmail?: string;
   }): Promise<FeedbackRecord> {
-    const res = await fetch(`${API_BASE}/feedback`, {
+    const data = await safeJsonFetch<{ feedback: FeedbackRecord }>(`${API_BASE}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error('Failed to submit feedback');
-    const data = await res.json();
     return data.feedback;
   },
 
   async getFeedbackList(): Promise<FeedbackRecord[]> {
-    const res = await fetch(`${API_BASE}/feedback`);
-    if (!res.ok) throw new Error('Failed to load feedback');
-    const data = await res.json();
-    return data.feedback;
+    const data = await safeJsonFetch<{ feedback: FeedbackRecord[] }>(`${API_BASE}/feedback`);
+    return data.feedback || [];
   },
 
   // Analytics
   async getDashboardStats(): Promise<DashboardStats> {
-    const res = await fetch(`${API_BASE}/analytics/dashboard`);
-    if (!res.ok) throw new Error('Failed to load analytics dashboard');
-    const data = await res.json();
+    const data = await safeJsonFetch<{ stats: DashboardStats }>(`${API_BASE}/analytics/dashboard`);
     return data.stats;
   },
 
   // Test Suite
   async getTestQuestions(): Promise<TestQuestion[]> {
-    const res = await fetch(`${API_BASE}/test-suite/questions`);
-    if (!res.ok) throw new Error('Failed to load test questions');
-    const data = await res.json();
-    return data.questions;
+    const data = await safeJsonFetch<{ questions: TestQuestion[] }>(`${API_BASE}/test-suite/questions`);
+    return data.questions || [];
   },
 
   async runTestSuite(provider?: string): Promise<TestRunResult> {
-    const res = await fetch(`${API_BASE}/test-suite/run`, {
+    return safeJsonFetch<TestRunResult>(`${API_BASE}/test-suite/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider }),
     });
-    if (!res.ok) throw new Error('Automated test evaluation failed');
-    return res.json();
   },
 
   // System Configuration
   async getSystemConfig(): Promise<SystemConfig> {
-    const res = await fetch(`${API_BASE}/config`);
-    if (!res.ok) throw new Error('Failed to fetch system config');
-    return res.json();
+    return safeJsonFetch<SystemConfig>(`${API_BASE}/config`);
   },
 };
