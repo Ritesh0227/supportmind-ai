@@ -76,14 +76,16 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-// Start Server
-app.listen(PORT, HOST, () => {
-  console.log('====================================================');
-  console.log(`🚀 SupportMind AI Backend Server active on ${HOST}:${PORT}`);
-  console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
-  console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER || 'builtin'}`);
-  console.log(`🗄️ Database: ${process.env.MONGODB_URI ? 'MongoDB' : 'Persistent Storage (server/data/db.json)'}`);
-  console.log('====================================================');
-});
+// Start Server (only when not running inside a serverless platform like Vercel)
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, HOST, () => {
+    console.log('====================================================');
+    console.log(`🚀 SupportMind AI Backend Server active on ${HOST}:${PORT}`);
+    console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+    console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER || 'builtin'}`);
+    console.log(`🗄️ Database: ${process.env.MONGODB_URI ? 'MongoDB' : 'Persistent Storage (server/data/db.json)'}`);
+    console.log('====================================================');
+  });
+}
 
 export { app };
