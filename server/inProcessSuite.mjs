@@ -2,7 +2,7 @@ import http from 'http';
 
 // We import the compiled server which starts listening on PORT (5000 by default)
 process.env.PORT = '5001'; // use a fresh port 5001 to avoid collisions
-const BASE = 'http://localhost:5001';
+const BASE = 'http://127.0.0.1:5001';
 
 console.log('Starting in-process server on port 5001...');
 await import('./dist/index.js');
@@ -15,7 +15,7 @@ async function test(name, fn) {
   try {
     await fn();
   } catch (e) {
-    results.push({ test: name, status: 'FAIL', detail: e.message });
+    results.push({ test: name, status: 'FAIL', detail: `${e.message} (cause: ${e.cause})` });
   }
 }
 

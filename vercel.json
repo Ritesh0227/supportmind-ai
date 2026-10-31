@@ -1,11 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "npm run build --workspace=client",
+  "buildCommand": "npm run build:all",
   "outputDirectory": "client/dist",
-  "framework": "vite",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/api",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

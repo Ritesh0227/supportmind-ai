@@ -26,8 +26,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Root endpoint for deployment verification
-app.get('/', (_req, res) => {
+// Normalize URL prefix for serverless environments (e.g. Vercel rewrites)
+app.use((req, _res, next) => {
+  if (req.url && !req.url.startsWith('/api')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
+  next();
+});
+
+// Root and /api endpoint for deployment verification
+const rootHandler = (_req: express.Request, res: express.Response) => {
   res.json({
     status: 'online',
     name: 'SupportMind AI API (HACK-P380)',
@@ -42,7 +50,9 @@ app.get('/', (_req, res) => {
       analytics: '/api/analytics/dashboard',
     },
   });
-});
+};
+app.get('/', rootHandler);
+app.get('/api', rootHandler);
 
 // API Routes
 app.use('/api/auth', authRouter);
