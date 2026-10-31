@@ -4,12 +4,17 @@
 **Category:** Customer Support  
 **Project Type:** Full-Stack Web Application  
 
+[![Live Website](https://img.shields.io/badge/Live_Deployment-Vercel-black?style=flat-square&logo=vercel)](https://supportmind-ai-tau.vercel.app)
 [![React](https://img.shields.io/badge/Frontend-React_18_%2B_TypeScript-61dafb?style=flat-square&logo=react)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS-38bdf8?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_%2B_Express-339933?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL_%2F_Supabase-3ecf8e?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Accuracy](https://img.shields.io/badge/Benchmark-100%25_Verified-emerald?style=flat-square)](#-automated-evaluation-suite)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+> 🚀 **Live Production Website:** [https://supportmind-ai-tau.vercel.app](https://supportmind-ai-tau.vercel.app)  
+> 🔑 **Demo Admin Credentials:** `admin@supportmind.ai` / `admin123`  
+> 📂 **GitHub Repository:** [https://github.com/Ritesh0227/supportmind-ai](https://github.com/Ritesh0227/supportmind-ai)  
 
 ---
 
@@ -216,14 +221,21 @@ npm run test:api
 
 ## 🌐 Production Deployment
 
-### Deploying Frontend to Vercel:
-1. Push repository to GitHub.
-2. Import project into Vercel and set Root Directory to `client`.
-3. Set build command: `npm run build` and output directory: `dist`.
-4. Configure environment variable: `VITE_API_URL=https://your-backend-url.com/api`.
+The project is fully deployed on **Vercel** as a unified full-stack application (React 18 frontend + Express Serverless Functions):
 
-### Deploying Backend:
-Deploy `server/` to Render, Railway, or Fly.io with Node.js 18+ and set environment variables from `.env.example`.
+- **Live Production URL:** [https://supportmind-ai-tau.vercel.app](https://supportmind-ai-tau.vercel.app)
+- **Deployment Strategy:** Vercel Serverless Functions (`api/index.ts`, `api/[...path].ts`) handle all `/api/*` REST endpoints with sub-second cold starts.
+- **Frontend SPA Routing:** Vite production build outputting to `client/dist` with seamless SPA routing rewrites.
+- **Data Persistence:** Self-contained persistent database with automated pre-seeding across all 8 customer support categories and 24 articles.
+
+### To Deploy Your Own Instance:
+```bash
+# Push to your GitHub repository
+git push origin main
+
+# Deploy to Vercel with zero config
+npx vercel --prod
+```
 
 ---
 
