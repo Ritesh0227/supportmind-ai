@@ -1,6 +1,7 @@
 {
   "name": "supportmind-ai",
   "version": "1.0.0",
+  "type": "module",
   "description": "SupportMind AI - Enterprise AI Customer Support Knowledge System (HACK-P380)",
   "private": true,
   "workspaces": [
