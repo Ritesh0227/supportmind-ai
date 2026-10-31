@@ -5,12 +5,14 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { categoriesRouter } from './routes/categories.js';
+import { productsRouter } from './routes/products.js';
 import { articlesRouter } from './routes/articles.js';
 import { chatRouter } from './routes/chat.js';
 import { feedbackRouter } from './routes/feedback.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { testSuiteRouter } from './routes/testSuite.js';
 import { configRouter } from './routes/config.js';
+import { authRouter } from './routes/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,7 +26,9 @@ app.use(cors({
 app.use(express.json());
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/products', productsRouter);
 app.use('/api/articles', articlesRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/feedback', feedbackRouter);
@@ -36,10 +40,11 @@ app.use('/api/config', configRouter);
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'healthy',
-    name: 'SupportMind AI Knowledge System',
+    name: 'SupportMind AI Knowledge System (HACK-P380)',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    databaseDriver: process.env.MONGODB_URI ? 'MongoDB' : 'Persistent Storage (db.json)',
   });
 });
 
@@ -58,6 +63,6 @@ app.listen(PORT, () => {
   console.log(`🚀 SupportMind AI Backend Server active on port ${PORT}`);
   console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER || 'builtin'}`);
-  console.log(`🗄️ Database Mode: ${process.env.DATABASE_MODE || 'local'}`);
+  console.log(`🗄️ Database: ${process.env.MONGODB_URI ? 'MongoDB' : 'Persistent Storage (server/data/db.json)'}`);
   console.log('====================================================');
 });

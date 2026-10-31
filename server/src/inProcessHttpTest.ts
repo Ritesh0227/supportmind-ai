@@ -17,20 +17,21 @@ app.get('/api/health', (req, res) => res.json({ status: 'healthy', name: 'Suppor
 async function runInProcessHttpTest() {
   console.log('--- Starting In-Process HTTP Server ---');
   const server = app.listen(0);
-  const port = server.address().port;
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 5000;
   const BASE = `http://127.0.0.1:${port}/api`;
   console.log(`Bound to local ephemeral port: ${port}`);
 
   let passed = 0;
   let total = 0;
 
-  async function test(name, fn) {
+  async function test(name: string, fn: () => Promise<void>) {
     total++;
     try {
       await fn();
       passed++;
       console.log(`✅ [HTTP PASS] ${name}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(`❌ [HTTP FAIL] ${name}:`, err.message || err);
     }
   }

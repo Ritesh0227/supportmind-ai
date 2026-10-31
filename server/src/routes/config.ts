@@ -1,6 +1,7 @@
 // server/src/routes/config.ts
 import { Router } from 'express';
 import { supabase } from '../db/supabaseClient.js';
+import { db } from '../db/index.js';
 
 export const configRouter = Router();
 
@@ -18,10 +19,22 @@ configRouter.get('/', async (_req, res) => {
     ollamaReachable = false;
   }
 
+  const driverInfo = db.getStorageDriverInfo();
+
   res.json({
     activeProvider: process.env.AI_PROVIDER || 'builtin',
     databaseMode: process.env.DATABASE_MODE || 'local',
     supabaseConnected: supabase !== null,
+    database: {
+      activeDriver: driverInfo.driver,
+      isPersistent: driverInfo.isPersistent,
+      mongoDbConfigured: driverInfo.mongoDbConfigured,
+      mongoDbStatusNotice: driverInfo.mongoDbConfigured
+        ? 'Connected to external MongoDB instance'
+        : 'MONGODB_URI not set. Using JSON-backed persistent document store (server/data/db.json) with atomic writes. Mongoose schemas fully defined.',
+      filePath: driverInfo.filePath,
+      modelsAvailable: driverInfo.modelsAvailable,
+    },
     providers: {
       builtin: {
         name: 'SupportMind Built-in Grounded Engine',

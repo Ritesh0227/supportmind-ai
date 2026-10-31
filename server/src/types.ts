@@ -7,6 +7,8 @@ export interface Profile {
   email: string;
   full_name: string;
   role: UserRole;
+  password_hash?: string;
+  password_salt?: string;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +23,14 @@ export interface ArticleCategory {
   created_at: string;
 }
 
+export interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon?: string;
+}
+
 export type ArticleStatus = 'draft' | 'published' | 'archived';
 
 export interface Article {
@@ -28,8 +38,10 @@ export interface Article {
   title: string;
   slug: string;
   category_id: string;
+  product?: string;
   content: string;
   excerpt: string;
+  troubleshooting?: string;
   keywords: string[];
   tags: string[];
   status: ArticleStatus;
@@ -56,6 +68,7 @@ export interface SourceCitation {
   title: string;
   slug: string;
   category: string;
+  product?: string;
   excerpt: string;
   relevanceScore: number;
 }

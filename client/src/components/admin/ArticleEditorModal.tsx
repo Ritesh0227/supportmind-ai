@@ -1,12 +1,13 @@
 // client/src/components/admin/ArticleEditorModal.tsx
 import React, { useState, useEffect } from 'react';
-import { X, Save, Eye, Edit3, Tag, FileText, Check } from 'lucide-react';
-import { Article, ArticleCategory } from '../../types.js';
+import { X, Save, Eye, Edit3, Tag, FileText, Check, Layers, Wrench, AlertCircle } from 'lucide-react';
+import { Article, ArticleCategory, Product } from '../../types.js';
 import { api } from '../../services/api.js';
 
 interface ArticleEditorModalProps {
   article: Article | null;
   categories: ArticleCategory[];
+  products?: Product[];
   defaultQuestionPrompt?: string;
   onClose: () => void;
   onSaved: () => void;
@@ -15,6 +16,7 @@ interface ArticleEditorModalProps {
 export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
   article,
   categories,
+  products = [],
   defaultQuestionPrompt,
   onClose,
   onSaved,
@@ -23,8 +25,13 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
 
   const [title, setTitle] = useState(article?.title || defaultQuestionPrompt ? `Resolving: ${defaultQuestionPrompt}` : '');
   const [categoryId, setCategoryId] = useState(article?.category_id || categories[0]?.id || '');
+  const [product, setProduct] = useState(article?.product || products[0]?.name || 'NexusDesk Core');
   const [status, setStatus] = useState<'published' | 'draft' | 'archived'>(article?.status || 'published');
   const [excerpt, setExcerpt] = useState(article?.excerpt || '');
+  const [troubleshooting, setTroubleshooting] = useState(
+    article?.troubleshooting ||
+      '1. Verify system requirements and connection status.\n2. Clear browser cache and restart application.\n3. Escalate to engineering if error code persists.'
+  );
   const [content, setContent] = useState(
     article?.content ||
       `## Overview\n\n*(Demonstration Knowledge Base - SupportMind AI Sample Data)*\n\nProvide clear context regarding this support topic.\n\n## Step-by-Step Procedure\n\n1. Step one instructions\n2. Step two instructions\n3. Verification and completion step\n\n> **Note:** Important considerations for the customer.`
@@ -45,7 +52,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim() || !categoryId) {
-      setError('Title, category, and content are required.');
+      setError('Title, category, and article content are required.');
       return;
     }
 
@@ -60,8 +67,10 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
         await api.updateArticle(article.id, {
           title: title.trim(),
           category_id: categoryId,
+          product,
           content,
           excerpt: excerpt || content.slice(0, 140) + '...',
+          troubleshooting,
           keywords,
           tags,
           status,
@@ -70,8 +79,10 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
         await api.createArticle({
           title: title.trim(),
           category_id: categoryId,
+          product,
           content,
           excerpt: excerpt || content.slice(0, 140) + '...',
+          troubleshooting,
           keywords,
           tags,
           status,
@@ -100,62 +111,54 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 {isEditing ? 'Edit Knowledge Article' : 'Create New Knowledge Article'}
               </h3>
               <p className="text-xs text-slate-500">
-                {isEditing ? 'Modify content and update RAG retrieval tokens' : 'Add approved documentation to the grounded AI system'}
+                Grounds customer AI support answers and updates the searchable knowledge base.
               </p>
             </div>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              onClick={() => setPreviewMode(!previewMode)}
-              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            >
-              {previewMode ? (
-                <>
-                  <Edit3 className="h-3.5 w-3.5" />
-                  <span>Editor</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Preview</span>
-                </>
-              )}
-            </button>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Content Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-          {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-semibold">
-              {error}
-            </div>
-          )}
+        {/* Error notification */}
+        {error && (
+          <div className="mx-6 mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center space-x-2 text-rose-700 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+          {/* Title */}
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Article Title *
+            </label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., How to Configure Multi-Factor Authentication"
+              className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-sm text-slate-900 font-semibold"
+            />
+          </div>
+
+          {/* Grid: Category, Product, Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">Article Title</label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., How to Request an Expedited Refund"
-                className="w-full text-xs sm:text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium"
-              />
-            </div>
-
+            {/* Category */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Category</label>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Category *
+              </label>
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full text-xs sm:text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 bg-white"
+                className="w-full p-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-slate-800 bg-white"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -164,101 +167,164 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">Short Excerpt / Summary</label>
-              <input
-                type="text"
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="Brief summary displayed in search results and AI citations..."
-                className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
-              />
+            {/* Product */}
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Product Suite *
+              </label>
+              <select
+                value={product}
+                onChange={(e) => setProduct(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-slate-800 bg-white"
+              >
+                {products.length > 0 ? (
+                  products.map((p) => (
+                    <option key={p.id} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="NexusDesk Core">NexusDesk Core</option>
+                    <option value="CloudScale API">CloudScale API</option>
+                    <option value="AuthShield Pro">AuthShield Pro</option>
+                    <option value="BillingEngine">BillingEngine</option>
+                    <option value="ShipTrack Express">ShipTrack Express</option>
+                  </>
+                )}
+              </select>
             </div>
 
+            {/* Publication Status */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Publication Status</label>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Publication Status *
+              </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full text-xs sm:text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 bg-white"
+                className="w-full p-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-slate-800 bg-white font-medium"
               >
-                <option value="published">Published (Live for AI & Search)</option>
-                <option value="draft">Draft (Internal review)</option>
-                <option value="archived">Archived (Retired)</option>
+                <option value="published">Published (Live in AI & KB)</option>
+                <option value="draft">Draft (Internal Only)</option>
+                <option value="archived">Archived (Hidden from Search)</option>
               </select>
             </div>
           </div>
 
-          {/* Markdown Content or Preview */}
+          {/* Excerpt */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Article Content (Markdown Formatted)
+            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Short Description / Excerpt (Summary for Search Results)
             </label>
+            <textarea
+              rows={2}
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              placeholder="A concise 1-2 sentence summary displayed on cards and search snippets..."
+              className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-slate-800 leading-relaxed"
+            />
+          </div>
+
+          {/* Dedicated Troubleshooting Information */}
+          <div>
+            <div className="flex items-center space-x-1.5 font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <Wrench className="h-3.5 w-3.5 text-amber-600" />
+              <span>Relevant Troubleshooting Steps (Diagnostic Checklist)</span>
+            </div>
+            <textarea
+              rows={3}
+              value={troubleshooting}
+              onChange={(e) => setTroubleshooting(e.target.value)}
+              placeholder="1. First diagnostic check&#10;2. Second diagnostic test&#10;3. Resolution or escalation step"
+              className="w-full p-3 rounded-xl border border-amber-200 bg-amber-50/30 focus:border-blue-600 focus:outline-hidden text-slate-800 font-mono text-[11px] leading-relaxed"
+            />
+          </div>
+
+          {/* Main Article Content with Live Preview Toggle */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-bold text-slate-700 uppercase tracking-wider">
+                Article Content (Markdown Supported) *
+              </label>
+              <button
+                type="button"
+                onClick={() => setPreviewMode(!previewMode)}
+                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center space-x-1"
+              >
+                {previewMode ? <Edit3 className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <span>{previewMode ? 'Switch to Edit' : 'Preview Output'}</span>
+              </button>
+            </div>
+
             {previewMode ? (
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 min-h-[220px] prose prose-sm max-w-none">
-                <div className="whitespace-pre-wrap leading-relaxed text-slate-800">{content}</div>
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 min-h-[220px] prose prose-sm max-w-none">
+                {content.split('\n\n').map((p, i) => (
+                  <p key={i} className="text-slate-700 leading-relaxed mb-2">
+                    {p}
+                  </p>
+                ))}
               </div>
             ) : (
               <textarea
-                rows={9}
+                rows={8}
                 required
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full font-mono text-xs p-3.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="Write approved customer-facing documentation with step-by-step guidance..."
+                className="w-full p-3.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden font-mono text-[11px] leading-relaxed text-slate-800"
               />
             )}
           </div>
 
+          {/* Keywords & Tags */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
-                Search Keywords (comma-separated)
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Search Keywords (Comma-separated)
               </label>
               <input
                 type="text"
                 value={keywordsInput}
                 onChange={(e) => setKeywordsInput(e.target.value)}
-                placeholder="password, credentials, login, forgot"
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                placeholder="password, reset, credentials, login"
+                className="w-full p-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-slate-800"
               />
             </div>
-
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
-                Display Tags (comma-separated)
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Tags (Comma-separated)
               </label>
               <input
                 type="text"
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="Security, Account, Password"
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                placeholder="Security, Authentication, Account"
+                className="w-full p-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:outline-hidden text-slate-800"
               />
             </div>
           </div>
-
-          {/* Submit Buttons */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center space-x-1.5 px-5 py-2.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors"
-            >
-              <Save className="h-4 w-4" />
-              <span>{saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Publish Article'}</span>
-            </button>
-          </div>
         </form>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="inline-flex items-center space-x-1.5 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs shadow-sm transition-all"
+          >
+            <Save className="h-4 w-4" />
+            <span>{saving ? 'Saving...' : isEditing ? 'Update Article' : 'Publish Article'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -123,7 +123,11 @@ export class AiProviderService {
     } else {
       // Use clean excerpts from matched snippets
       const snippet = top.matchedSnippets[0] || article.excerpt;
-      synthesis = `According to our official guide **"${article.title}"**:\n\n${snippet}\n\nFor complete guidance, you can open the cited article below.`;
+      synthesis = `According to our official guide **"${article.title}"**:\n\n${snippet}\n\n*(Source: ${article.title})*`;
+    }
+
+    if (article.troubleshooting) {
+      synthesis += `\n\n**Troubleshooting & Diagnostic Steps:**\n${article.troubleshooting}`;
     }
 
     return synthesis;

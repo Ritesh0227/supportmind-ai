@@ -11,6 +11,15 @@ export interface ArticleCategory {
   created_at: string;
 }
 
+export interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon?: string;
+  article_count?: number;
+}
+
 export type ArticleStatus = 'draft' | 'published' | 'archived';
 
 export interface Article {
@@ -18,8 +27,10 @@ export interface Article {
   title: string;
   slug: string;
   category_id: string;
+  product?: string;
   content: string;
   excerpt: string;
+  troubleshooting?: string;
   keywords: string[];
   tags: string[];
   status: ArticleStatus;
@@ -35,6 +46,7 @@ export interface SourceCitation {
   title: string;
   slug: string;
   category: string;
+  product?: string;
   excerpt: string;
   relevanceScore: number;
 }
@@ -60,6 +72,14 @@ export interface FeedbackRecord {
   comment?: string | null;
   user_email?: string | null;
   created_at: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'admin';
+  token?: string;
 }
 
 export interface DashboardStats {
@@ -123,6 +143,14 @@ export interface SystemConfig {
   activeProvider: string;
   databaseMode: string;
   supabaseConnected: boolean;
+  database?: {
+    activeDriver: string;
+    isPersistent: boolean;
+    mongoDbConfigured: boolean;
+    mongoDbStatusNotice: string;
+    filePath: string;
+    modelsAvailable: string[];
+  };
   providers: {
     [key: string]: {
       name: string;
@@ -132,3 +160,14 @@ export interface SystemConfig {
     };
   };
 }
+
+export type AppView =
+  | 'home'
+  | 'knowledge-base'
+  | 'article-detail'
+  | 'chat'
+  | 'admin-login'
+  | 'admin-dashboard'
+  | 'admin-articles'
+  | 'admin-questions'
+  | 'admin-feedback';

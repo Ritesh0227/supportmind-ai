@@ -57,9 +57,16 @@ export class RagEngine {
       const excerptLower = article.excerpt.toLowerCase();
       const contentLower = article.content.toLowerCase();
 
-      // Check distinct content token coverage
+      // Check distinct content token coverage across title, excerpt, content, troubleshooting, keywords, and product
       for (const token of contentTokens) {
-        if (titleLower.includes(token) || excerptLower.includes(token) || article.keywords.some((k) => k.toLowerCase().includes(token))) {
+        if (
+          titleLower.includes(token) ||
+          excerptLower.includes(token) ||
+          contentLower.includes(token) ||
+          (article.troubleshooting && article.troubleshooting.toLowerCase().includes(token)) ||
+          article.keywords.some((k) => k.toLowerCase().includes(token)) ||
+          (article.product && article.product.toLowerCase().includes(token))
+        ) {
           matchedDistinctTokens++;
         }
       }
@@ -139,6 +146,7 @@ export class RagEngine {
       title: item.article.title,
       slug: item.article.slug,
       category: item.article.category_id,
+      product: item.article.product,
       excerpt: item.article.excerpt,
       relevanceScore: Math.round(item.score * 10) / 10,
     }));

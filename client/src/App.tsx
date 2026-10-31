@@ -1,184 +1,262 @@
 // client/src/App.tsx
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/layout/Navbar.js';
-import { Hero } from './components/layout/Hero.js';
 import { Footer } from './components/layout/Footer.js';
-import { CategoryGrid } from './components/knowledge/CategoryGrid.js';
-import { ArticleList } from './components/knowledge/ArticleList.js';
-import { ArticleDetailModal } from './components/knowledge/ArticleDetailModal.js';
-import { FaqSection } from './components/knowledge/FaqSection.js';
-import { ContactSection } from './components/knowledge/ContactSection.js';
+import { HomePage } from './components/pages/HomePage.js';
+import { KnowledgeBasePage } from './components/pages/KnowledgeBasePage.js';
+import { ArticleDetailPage } from './components/pages/ArticleDetailPage.js';
+import { ChatPage } from './components/pages/ChatPage.js';
+import { AdminLoginPage } from './components/pages/AdminLoginPage.js';
+import { AdminPortal } from './components/pages/AdminPortal.js';
 import { ChatWidget } from './components/chat/ChatWidget.js';
-import { AdminDashboard } from './components/admin/AdminDashboard.js';
 import { TestSuiteModal } from './components/testsuite/TestSuiteModal.js';
-import { Article, ArticleCategory } from './types.js';
+import { Article, ArticleCategory, Product, AdminUser, AppView } from './types.js';
 import { api } from './services/api.js';
 
 export const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'customer' | 'admin'>('customer');
+  const [activePage, setActivePage] = useState<AppView>('home');
   const [categories, setCategories] = useState<ArticleCategory[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Filters for Knowledge Base
+  const [kbInitialCategory, setKbInitialCategory] = useState<string | null>(null);
+  const [kbInitialSearch, setKbInitialSearch] = useState<string>('');
+
+  // Chat query
   const [chatInitialQuery, setChatInitialQuery] = useState<string | undefined>(undefined);
+  const [isChatWidgetOpen, setIsChatWidgetOpen] = useState(false);
   const [isTestSuiteOpen, setIsTestSuiteOpen] = useState(false);
+
+  // Admin Auth State
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('supportmind_admin_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [loading, setLoading] = useState(true);
 
-  // Initial data load
-  const loadKnowledgeBase = async () => {
+  // Validate admin token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('supportmind_admin_token');
+    if (token) {
+      api.getAdminProfile()
+        .then((res) => {
+          setAdminUser(res.user);
+          localStorage.setItem('supportmind_admin_user', JSON.stringify(res.user));
+        })
+        .catch(() => {
+          // Stale or invalid token - clear session
+          localStorage.removeItem('supportmind_admin_token');
+          localStorage.removeItem('supportmind_admin_user');
+          setAdminUser(null);
+        });
+    }
+  }, []);
+
+  // Load knowledge base data
+  const loadData = async () => {
     try {
-      const [cats, arts] = await Promise.all([
+      const [cats, prods, arts] = await Promise.all([
         api.getCategories(),
+        api.getProducts(),
         api.getArticles({ status: 'published' }),
       ]);
       setCategories(cats);
+      setProducts(prods);
       setArticles(arts);
     } catch (err) {
-      console.error('Failed to load initial knowledge base:', err);
+      console.error('Failed to load knowledge base data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadKnowledgeBase();
+    loadData();
   }, []);
 
-  // Filter articles based on selected category or search query
-  const filteredArticles = articles.filter((art) => {
-    if (selectedCategoryId && art.category_id !== selectedCategoryId) {
-      return false;
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        art.title.toLowerCase().includes(q) ||
-        art.excerpt.toLowerCase().includes(q) ||
-        art.content.toLowerCase().includes(q) ||
-        art.keywords.some((k) => k.toLowerCase().includes(q)) ||
-        art.tags.some((t) => t.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
-
-  const handleOpenChatWithQuery = (query: string) => {
-    setChatInitialQuery(query);
-    setIsChatOpen(true);
+  // Navigation handlers
+  const handleNavigateToHome = () => {
+    setActivePage('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenSourceArticle = async (slug: string) => {
+  const handleNavigateToKnowledgeBase = (categoryId?: string, search?: string) => {
+    setKbInitialCategory(categoryId || null);
+    setKbInitialSearch(search || '');
+    setActivePage('knowledge-base');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateToArticle = (article: Article) => {
+    setSelectedArticle(article);
+    setActivePage('article-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenSourceArticle = async (slugOrId: string) => {
     try {
-      const { article } = await api.getArticle(slug);
-      setSelectedArticle(article);
+      const { article } = await api.getArticle(slugOrId);
+      handleNavigateToArticle(article);
     } catch {
-      // Fallback: look up in local state
-      const found = articles.find((a) => a.slug === slug);
-      if (found) setSelectedArticle(found);
+      const found = articles.find((a) => a.slug === slugOrId || a.id === slugOrId);
+      if (found) handleNavigateToArticle(found);
     }
+  };
+
+  const handleNavigateToChat = (query?: string) => {
+    setChatInitialQuery(query);
+    setActivePage('chat');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigate = (page: AppView) => {
+    if (page.startsWith('admin')) {
+      if (!adminUser) {
+        setActivePage('admin-login');
+      } else {
+        setActivePage(page);
+      }
+    } else {
+      setActivePage(page);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAdminLogin = (user: AdminUser) => {
+    setAdminUser(user);
+    setActivePage('admin-dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAdminLogout = () => {
+    api.adminLogout();
+    localStorage.removeItem('supportmind_admin_token');
+    localStorage.removeItem('supportmind_admin_user');
+    setAdminUser(null);
+    setActivePage('home');
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-50 selection:bg-blue-600 selection:text-white font-sans antialiased text-slate-900">
       {/* Top Navbar */}
       <Navbar
-        currentView={currentView}
-        onViewChange={setCurrentView}
-        onOpenChat={() => {
-          setChatInitialQuery(undefined);
-          setIsChatOpen(true);
-        }}
+        activePage={activePage}
+        adminUser={adminUser}
+        onNavigate={handleNavigate}
         onOpenTestSuite={() => setIsTestSuiteOpen(true)}
+        onLogout={handleAdminLogout}
       />
 
-      {/* Main View Area */}
+      {/* Main View Switcher */}
       <main className="flex-1">
-        {currentView === 'customer' ? (
-          <>
-            {/* Hero Section */}
-            <Hero
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onSuggestedClick={(q) => {
-                setSearchQuery(q);
-                handleOpenChatWithQuery(q);
-              }}
-              onOpenChatWithQuery={handleOpenChatWithQuery}
-            />
-
-            {/* 8 Categories Grid */}
-            <CategoryGrid
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              onSelectCategory={(catId) => {
-                setSelectedCategoryId(catId);
-                const el = document.getElementById('articles');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            {/* Verified Support Articles List */}
-            <ArticleList
-              articles={filteredArticles}
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              searchQuery={searchQuery}
-              onSelectArticle={(art) => setSelectedArticle(art)}
-              onClearFilters={() => {
-                setSelectedCategoryId(null);
-                setSearchQuery('');
-              }}
-              onOpenChatWithQuery={handleOpenChatWithQuery}
-            />
-
-            {/* FAQs Section */}
-            <FaqSection onAskAi={handleOpenChatWithQuery} />
-
-            {/* Contact Support Escalation Section */}
-            <ContactSection />
-          </>
-        ) : (
-          /* Admin Dashboard Portal */
-          <AdminDashboard
+        {/* Page 1: Home Page */}
+        {activePage === 'home' && (
+          <HomePage
             categories={categories}
-            onOpenArticleDetail={(art) => setSelectedArticle(art)}
+            articles={articles}
+            onNavigateToKnowledgeBase={handleNavigateToKnowledgeBase}
+            onNavigateToArticle={handleNavigateToArticle}
+            onNavigateToChat={handleNavigateToChat}
           />
+        )}
+
+        {/* Page 2: Knowledge Base */}
+        {activePage === 'knowledge-base' && (
+          <KnowledgeBasePage
+            articles={articles}
+            categories={categories}
+            products={products}
+            initialCategoryId={kbInitialCategory}
+            initialSearchQuery={kbInitialSearch}
+            onSelectArticle={handleNavigateToArticle}
+            onAskAi={handleNavigateToChat}
+          />
+        )}
+
+        {/* Page 3: Article Details */}
+        {activePage === 'article-detail' && selectedArticle && (
+          <ArticleDetailPage
+            article={selectedArticle}
+            categories={categories}
+            onBackToKnowledgeBase={() => setActivePage('knowledge-base')}
+            onSelectRelatedArticle={handleNavigateToArticle}
+            onAskAi={handleNavigateToChat}
+          />
+        )}
+
+        {/* Page 4: AI Customer Support Chat */}
+        {activePage === 'chat' && (
+          <ChatPage
+            initialQuery={chatInitialQuery}
+            onOpenSourceArticle={handleOpenSourceArticle}
+          />
+        )}
+
+        {/* Page 5: Admin Login */}
+        {activePage === 'admin-login' && (
+          <AdminLoginPage
+            onLoginSuccess={handleAdminLogin}
+            onCancelToHome={handleNavigateToHome}
+          />
+        )}
+
+        {/* Pages 6, 7, 8: Admin Console (Dashboard, Manage Articles, Customer Questions & Feedback) */}
+        {activePage.startsWith('admin') && activePage !== 'admin-login' && (
+          adminUser ? (
+            <AdminPortal
+              adminUser={adminUser}
+              categories={categories}
+              products={products}
+              initialTab={
+                activePage === 'admin-articles'
+                  ? 'articles'
+                  : activePage === 'admin-questions'
+                  ? 'questions'
+                  : activePage === 'admin-feedback'
+                  ? 'feedback'
+                  : 'dashboard'
+              }
+              onLogout={handleAdminLogout}
+              onOpenArticleDetail={handleNavigateToArticle}
+            />
+          ) : (
+            <AdminLoginPage
+              onLoginSuccess={handleAdminLogin}
+              onCancelToHome={handleNavigateToHome}
+              redirectNotice="Administrator authentication required to access this area."
+            />
+          )
         )}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer (Rendered on customer-facing pages) */}
+      {!activePage.startsWith('admin') && <Footer />}
 
-      {/* Article Detail Reading Modal */}
-      {selectedArticle && (
-        <ArticleDetailModal
-          article={selectedArticle}
-          categories={categories}
-          onClose={() => setSelectedArticle(null)}
-          onVoteRecorded={() => {
-            loadKnowledgeBase();
-          }}
+      {/* Floating Chat Quick-Access Widget (Can be toggled from any customer page) */}
+      {!activePage.startsWith('admin') && activePage !== 'chat' && (
+        <ChatWidget
+          isOpen={isChatWidgetOpen}
+          onClose={() => setIsChatWidgetOpen(false)}
+          onOpen={() => setIsChatWidgetOpen(true)}
+          initialQuery={chatInitialQuery}
+          onOpenSourceArticle={handleOpenSourceArticle}
         />
       )}
 
-      {/* Hackathon Automated Evaluation Benchmark Modal */}
+      {/* Hackathon Automated Evaluation Benchmark Suite Modal */}
       {isTestSuiteOpen && (
         <TestSuiteModal
           onClose={() => setIsTestSuiteOpen(false)}
-          onTestInChat={(q) => handleOpenChatWithQuery(q)}
+          onTestInChat={(q) => handleNavigateToChat(q)}
         />
       )}
-
-      {/* Interactive AI Chatbot Widget */}
-      <ChatWidget
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        onOpen={() => setIsChatOpen(true)}
-        initialQuery={chatInitialQuery}
-        onOpenSourceArticle={handleOpenSourceArticle}
-      />
     </div>
   );
 };
