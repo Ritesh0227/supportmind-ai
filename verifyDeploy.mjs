@@ -56,10 +56,11 @@ async function verifyDeploy() {
   await test('Categories API (/api/categories)', async () => {
     const res = await fetch(`${SITE}/api/categories`);
     const data = await res.json();
-    if (res.status === 200 && Array.isArray(data) && data.length >= 8) {
-      pass('Categories API (/api/categories)', `HTTP 200, returned ${data.length} categories`);
+    const categories = data.categories || data;
+    if (res.status === 200 && Array.isArray(categories) && categories.length >= 8) {
+      pass('Categories API (/api/categories)', `HTTP 200, returned ${categories.length} categories`);
     } else {
-      fail('Categories API (/api/categories)', `HTTP ${res.status}: returned ${Array.isArray(data) ? data.length : typeof data}`);
+      fail('Categories API (/api/categories)', `HTTP ${res.status}: returned ${Array.isArray(categories) ? categories.length : typeof categories}`);
     }
   });
 
@@ -67,10 +68,11 @@ async function verifyDeploy() {
   await test('Articles API (/api/articles)', async () => {
     const res = await fetch(`${SITE}/api/articles?status=published`);
     const data = await res.json();
-    if (res.status === 200 && Array.isArray(data) && data.length >= 20) {
-      pass('Articles API (/api/articles)', `HTTP 200, returned ${data.length} articles`);
+    const articles = data.articles || data;
+    if (res.status === 200 && Array.isArray(articles) && articles.length >= 20) {
+      pass('Articles API (/api/articles)', `HTTP 200, returned ${articles.length} articles`);
     } else {
-      fail('Articles API (/api/articles)', `HTTP ${res.status}: count=${Array.isArray(data) ? data.length : 0}`);
+      fail('Articles API (/api/articles)', `HTTP ${res.status}: count=${Array.isArray(articles) ? articles.length : 0}`);
     }
   });
 
@@ -97,8 +99,8 @@ async function verifyDeploy() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    if (res.status === 200 && data.email === 'admin@supportmind.ai') {
-      pass('Admin Session Verification (/api/auth/me)', `HTTP 200, verified identity for ${data.email}`);
+    if (res.status === 200 && data.user?.email === 'admin@supportmind.ai') {
+      pass('Admin Session Verification (/api/auth/me)', `HTTP 200, verified identity for ${data.user.email}`);
     } else {
       fail('Admin Session Verification (/api/auth/me)', `HTTP ${res.status}: ${JSON.stringify(data)}`);
     }
@@ -109,7 +111,7 @@ async function verifyDeploy() {
     const res = await fetch(`${SITE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'How do I reset my password?' }),
+      body: JSON.stringify({ query: 'How do I reset my password?' }),
     });
     const data = await res.json();
     if (res.status === 200 && !data.isFallback && data.sources?.length > 0) {
@@ -124,7 +126,7 @@ async function verifyDeploy() {
     const res = await fetch(`${SITE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'What is drone flying policy for airplane luggage?' }),
+      body: JSON.stringify({ query: 'What is drone flying policy for airplane luggage?' }),
     });
     const data = await res.json();
     if (res.status === 200 && data.isFallback) {
@@ -138,10 +140,52 @@ async function verifyDeploy() {
   await test('Analytics Dashboard (/api/analytics/dashboard)', async () => {
     const res = await fetch(`${SITE}/api/analytics/dashboard`);
     const data = await res.json();
-    if (res.status === 200 && typeof data.totalArticles === 'number') {
-      pass('Analytics Dashboard (/api/analytics/dashboard)', `HTTP 200, total articles: ${data.totalArticles}`);
+    const stats = data.stats || data;
+    if (res.status === 200 && (typeof stats.totalActiveArticles === 'number' || typeof stats.totalArticles === 'number')) {
+      pass('Analytics Dashboard (/api/analytics/dashboard)', `HTTP 200, total active articles: ${stats.totalActiveArticles ?? stats.totalArticles}`);
     } else {
-      fail('Analytics Dashboard (/api/analytics/dashboard)', `HTTP ${res.status}`);
+      fail('Analytics Dashboard (/api/analytics/dashboard)', `HTTP ${res.status}: ${JSON.stringify(data)}`);
+    }
+  });
+
+  // 11. Admin Article Creation
+  let createdArticleId = '';
+  await test('Admin Article Creation (POST /api/articles)', async () => {
+    if (!token) throw new Error('Skipped: No auth token');
+    const res = await fetch(`${SITE}/api/articles`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: 'Live Deployment Test Article',
+        category_id: 'cat-account-mgmt',
+        content: 'This article was created via live API verification on Vercel.',
+        excerpt: 'Live verification test article excerpt.',
+        status: 'published',
+      }),
+    });
+    const data = await res.json();
+    if (res.status === 201 && data.article?.id) {
+      createdArticleId = data.article.id;
+      pass('Admin Article Creation (POST /api/articles)', `HTTP 201, created article id: ${createdArticleId}`);
+    } else {
+      fail('Admin Article Creation (POST /api/articles)', `HTTP ${res.status}: ${JSON.stringify(data)}`);
+    }
+  });
+
+  // 12. Admin Article Cleanup
+  await test('Admin Article Deletion (DELETE /api/articles/:id)', async () => {
+    if (!token || !createdArticleId) throw new Error('Skipped: No created article ID');
+    const res = await fetch(`${SITE}/api/articles/${createdArticleId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 200 || res.status === 204) {
+      pass('Admin Article Deletion (DELETE /api/articles/:id)', `HTTP ${res.status}, cleaned up ${createdArticleId}`);
+    } else {
+      fail('Admin Article Deletion (DELETE /api/articles/:id)', `HTTP ${res.status}`);
     }
   });
 
